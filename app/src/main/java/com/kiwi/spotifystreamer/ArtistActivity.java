@@ -84,7 +84,7 @@ public class ArtistActivity extends AppCompatActivity {
             @Override
             public void onItemClick(AdapterView<?> adapter, View view, int position, long arg) {
                 Intent appInfo = new Intent(ArtistActivity.this, TopTrackActivity.class);
-                appInfo.putExtra("spotifyID", spotifyIDs.get(position));
+                appInfo.putExtra("spotifyIDForArtist", spotifyIDs.get(position));
                 appInfo.putExtra("artistName", artistNs.get(position));
                 startActivity(appInfo);
             }

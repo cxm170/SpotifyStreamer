@@ -12,16 +12,14 @@ import android.support.v4.app.NavUtils;
 import android.support.v7.app.AppCompatActivity;
 
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ListView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -34,13 +32,15 @@ import kaaes.spotify.webapi.android.models.Tracks;
 
 public class TopTrackActivity extends AppCompatActivity {
 
-    String spotifyID;
+    String spotifyIDForArtist;
     ListView topTracksListView;
     TrackArrayAdapter trackAdapter;
 
     ArrayList<String> trackNames = new ArrayList<>();
     ArrayList<String> albumNames = new ArrayList<>();
     ArrayList<String> albumImageURLs = new ArrayList<>();
+
+    ArrayList<String> spotifyIDsForTracks = new ArrayList<>();
 
 
 
@@ -74,25 +74,33 @@ public class TopTrackActivity extends AppCompatActivity {
         }
 
 
-        spotifyID = intent.getStringExtra("spotifyID");
+        spotifyIDForArtist = intent.getStringExtra("spotifyIDForArtist");
         topTracksListView = (ListView) findViewById(R.id.track_list_view);
 
         if(savedInstanceState == null){
 
 
-            new QueryTopTracksTask().execute(spotifyID);
+            new QueryTopTracksTask().execute(spotifyIDForArtist);
 
 
         }else{
             trackNames = savedInstanceState.getStringArrayList("trackNames");
             albumNames = savedInstanceState.getStringArrayList("albumNames");
             albumImageURLs = savedInstanceState.getStringArrayList("albumImageURLs");
+            spotifyIDsForTracks = savedInstanceState.getStringArrayList("spotifyIDsForTracks");
         }
 
         trackAdapter = new TrackArrayAdapter(this, trackNames, albumNames, albumImageURLs);
         topTracksListView.setAdapter(trackAdapter);
 
-
+        topTracksListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapter, View view, int position, long arg) {
+                Intent appInfo = new Intent(TopTrackActivity.this, PlaybackActivity.class);
+                appInfo.putExtra("spotifyIDsForTrack", spotifyIDsForTracks.get(position));
+                startActivity(appInfo);
+            }
+        });
 
 
     }
@@ -104,7 +112,7 @@ public class TopTrackActivity extends AppCompatActivity {
         outState.putStringArrayList("trackNames", trackNames);
         outState.putStringArrayList("albumNames", albumNames);
         outState.putStringArrayList("albumImageURLs", albumImageURLs);
-
+        outState.putStringArrayList("spotifyIDsForTracks", spotifyIDsForTracks);
     }
 
 
@@ -154,32 +162,21 @@ public class TopTrackActivity extends AppCompatActivity {
             albumNames.clear();
             albumImageURLs.clear();
 
-
             for(Track track:results.tracks){
-                String trackName = track.name;
-                String albumName = track.album.name;
-                Image albumImageURL;
                 if(track.album.images.size()>0){
-                    albumImageURL = track.album.images.get(track.album.images.size()-1);
-                    String imageURL = albumImageURL.url;
-                    albumImageURLs.add(imageURL);
-                }
-                else albumImageURLs.add(null);
+                    albumImageURLs.add(track.album.images.get(track.album.images.size()-1).url);
+                }else
+                    albumImageURLs.add(null);
 
-
-
-                trackNames.add(trackName);
-                albumNames.add(albumName);
-
+                trackNames.add(track.name);
+                albumNames.add(track.album.name);
+                spotifyIDsForTracks.add(track.id);
             }
+
             if(trackNames.size()>0) {
                 runOnUiThread(new Runnable() {
                     public void run() {
-
-
-
                         trackAdapter.notifyDataSetChanged();
-
                     }
                 });
             }else{
