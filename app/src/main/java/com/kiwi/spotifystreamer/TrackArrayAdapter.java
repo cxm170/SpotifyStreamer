@@ -28,16 +28,35 @@ public class TrackArrayAdapter extends ArrayAdapter<String> {
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
-        LayoutInflater inflater = (LayoutInflater) context
-                .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        View rowView = inflater.inflate(R.layout.track, parent, false);
-        TextView trackNameTextView = (TextView) rowView.findViewById(R.id.track_name);
-        TextView albumNameTextView = (TextView) rowView.findViewById(R.id.album_name);
-        ImageView albumImageView = (ImageView) rowView.findViewById(R.id.album_image);
-        trackNameTextView.setText(trackNames.get(position));
-        albumNameTextView.setText(albumNames.get(position));
-        if (albumImageURLs.get(position) != null) Picasso.with(context).load(albumImageURLs.get(position)).into(albumImageView);
+        View vi = convertView;
+        TrackViewHolder trackViewHolder;
 
-        return rowView;
+        if (vi == null) {
+            LayoutInflater inflater = (LayoutInflater) context
+                    .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            vi = inflater.inflate(R.layout.track, parent, false);
+            trackViewHolder = new TrackViewHolder();
+            trackViewHolder.trackName = (TextView) vi.findViewById(R.id.track_name);
+            trackViewHolder.albumName = (TextView) vi.findViewById(R.id.album_name);
+            trackViewHolder.albumImage = (ImageView) vi.findViewById(R.id.album_image);
+            vi.setTag(trackViewHolder);
+        }else{
+            trackViewHolder = (TrackViewHolder) vi.getTag();
+        }
+
+
+        trackViewHolder.trackName.setText(trackNames.get(position));
+        trackViewHolder.albumName.setText(albumNames.get(position));
+        if (albumImageURLs.get(position) != null) Picasso.with(context).load(albumImageURLs.get(position)).into(trackViewHolder.albumImage);
+
+        return vi;
+    }
+
+
+    static class TrackViewHolder {
+        TextView trackName;
+        TextView albumName;
+        ImageView albumImage;
+
     }
 }

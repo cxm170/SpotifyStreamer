@@ -26,14 +26,35 @@ public class ArtistArrayAdapter extends ArrayAdapter<String> {
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
-        LayoutInflater inflater = (LayoutInflater) context
-                .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        View rowView = inflater.inflate(R.layout.artist, parent, false);
-        TextView artistNameTextView = (TextView) rowView.findViewById(R.id.artist_name);
-        ImageView artistImageView = (ImageView) rowView.findViewById(R.id.artist_image);
-        artistNameTextView.setText(artistNames.get(position));
-        if (artistImageURLs.get(position) != null) Picasso.with(context).load(artistImageURLs.get(position)).into(artistImageView);
+        View vi = convertView;
+        ArtistViewHolder artistViewHolder;
 
-        return rowView;
+        if(vi == null) {
+            LayoutInflater inflater = (LayoutInflater) context
+                    .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            vi = inflater.inflate(R.layout.artist, parent, false);
+
+            artistViewHolder = new ArtistViewHolder();
+
+            artistViewHolder.artistName = (TextView) vi.findViewById(R.id.artist_name);
+            artistViewHolder.artistImage = (ImageView) vi.findViewById(R.id.artist_image);
+            vi.setTag(artistViewHolder);
+
+        }else {
+            artistViewHolder = (ArtistViewHolder) vi.getTag();
+        }
+
+
+        artistViewHolder.artistName.setText(artistNames.get(position));
+        if (artistImageURLs.get(position) != null)
+            Picasso.with(context).load(artistImageURLs.get(position)).into(artistViewHolder.artistImage);
+        return vi;
+    }
+
+
+    static class ArtistViewHolder {
+        TextView artistName;
+        ImageView artistImage;
+
     }
 }
