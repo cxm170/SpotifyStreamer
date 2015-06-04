@@ -97,8 +97,11 @@ public class TopTrackActivity extends AppCompatActivity {
             @Override
             public void onItemClick(AdapterView<?> adapter, View view, int position, long arg) {
                 Intent appInfo = new Intent(TopTrackActivity.this, PlaybackActivity.class);
-                appInfo.putExtra("spotifyIDsForTrack", spotifyIDsForTracks.get(position));
+                appInfo.putStringArrayListExtra("spotifyIDsForTracks", spotifyIDsForTracks);
+
+                appInfo.putExtra("position", position);
                 startActivity(appInfo);
+
             }
         });
 

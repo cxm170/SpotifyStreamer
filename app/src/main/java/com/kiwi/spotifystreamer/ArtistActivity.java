@@ -2,6 +2,7 @@ package com.kiwi.spotifystreamer;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.media.MediaPlayer;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.ActionBar;
@@ -47,6 +48,8 @@ public class ArtistActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.artist_activity);
+
+
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar_artist); // Attaching the layout to the toolbar object
         setSupportActionBar(toolbar);
