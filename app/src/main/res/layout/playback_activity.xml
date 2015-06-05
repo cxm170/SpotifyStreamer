@@ -3,14 +3,14 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    tools:context=".TopTrackActivity">
+    tools:context=".PlaybackActivity">
 
     <include
         android:id="@+id/toolbar_playback"
         layout="@layout/toolbar"
         ></include>
 
-    <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    <FrameLayout
         android:id="@+id/playback_fragment_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
