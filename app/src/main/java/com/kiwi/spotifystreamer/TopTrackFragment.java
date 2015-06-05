@@ -109,7 +109,6 @@ public class TopTrackFragment extends ListFragment {
         }
 
 
-        // TODO: replace with a real list adapter.
 
         trackAdapter = new TrackArrayAdapter(getActivity(), trackNames, albumNames, albumImageURLs);
         setListAdapter(trackAdapter);
