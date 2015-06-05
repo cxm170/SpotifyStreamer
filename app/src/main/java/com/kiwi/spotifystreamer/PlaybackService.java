@@ -216,7 +216,7 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
 
 
     public int getCurrentPosition(){
-        return mMediaPlayer.getCurrentPosition();
+        return mMediaPlayer.getCurrentPosition()/1000;
 
     }
 

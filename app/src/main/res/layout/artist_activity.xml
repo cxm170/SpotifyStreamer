@@ -3,12 +3,15 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    tools:context=".TopTrackActivity">
+    tools:context=".ArtistActivity"
+    >
 
     <include
         android:id="@+id/toolbar_artist"
-        layout="@layout/toolbar"
-        ></include>
+        layout="@layout/toolbar_top_tracks"
+        >
+
+    </include>
 
     <LinearLayout android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -31,11 +34,13 @@
 
     />
 
-<ListView
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:id="@+id/artist_list_view"
-/>
+        <FrameLayout  android:id="@+id/artist_list_view_container"
+
+             android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            >
+        </FrameLayout>
+
 
 
 

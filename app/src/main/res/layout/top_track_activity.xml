@@ -7,31 +7,19 @@
 
     <include
         android:id="@+id/toolbar_track"
-        layout="@layout/toolbar"
+        layout="@layout/toolbar_top_tracks"
         >
-        <Button>
 
-        </Button>
     </include>
 
-<LinearLayout android:layout_width="match_parent"
+<FrameLayout
+    android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
-    android:paddingBottom="@dimen/activity_vertical_margin" >
-
-
-    <ListView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:id="@+id/track_list_view"
-
-        android:layout_alignParentStart="true" />
-
-
-
-
-</LinearLayout>
+    android:paddingBottom="@dimen/activity_vertical_margin"
+    android:id="@+id/track_list_view_container">
+</FrameLayout>
     </LinearLayout>

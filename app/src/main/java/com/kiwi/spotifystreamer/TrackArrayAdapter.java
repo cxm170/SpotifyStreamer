@@ -34,7 +34,7 @@ public class TrackArrayAdapter extends ArrayAdapter<String> {
         if (vi == null) {
             LayoutInflater inflater = (LayoutInflater) context
                     .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-            vi = inflater.inflate(R.layout.track, parent, false);
+            vi = inflater.inflate(R.layout.top_track_view, parent, false);
             trackViewHolder = new TrackViewHolder();
             trackViewHolder.trackName = (TextView) vi.findViewById(R.id.track_name);
             trackViewHolder.albumName = (TextView) vi.findViewById(R.id.album_name);

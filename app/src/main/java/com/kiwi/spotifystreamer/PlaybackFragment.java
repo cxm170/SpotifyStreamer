@@ -1,6 +1,8 @@
 package com.kiwi.spotifystreamer;
 
 
+
+
 import android.app.DialogFragment;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -16,6 +18,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.SeekBar;
@@ -25,6 +28,7 @@ import android.widget.Toast;
 import com.squareup.picasso.Picasso;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
@@ -37,7 +41,7 @@ import retrofit.Callback;
 import retrofit.RetrofitError;
 import retrofit.client.Response;
 
-public class PlaybackFragment extends DialogFragment{
+public class PlaybackFragment extends DialogFragment {
 
     private static final String ACTION_PLAY = "com.kiwi.action.PLAY";
     private static final String ACTION_PAUSE = "com.kiwi.action.PAUSE";
@@ -48,7 +52,7 @@ public class PlaybackFragment extends DialogFragment{
     private static final String ACTION_PLAYBACK_END = "com.kiwi.action.PLAYBACK_END";
 
 
-    private List<String> spotifyIDsForTracks;
+    private ArrayList<String> spotifyIDsForTracks;
     private int position;
 
 
@@ -80,7 +84,12 @@ public class PlaybackFragment extends DialogFragment{
 
     private Handler durationHandler = new Handler();
 
+    private Boolean isSameTrack;
 
+
+    public Track currentTrack;
+
+    private boolean showDialog;
 
     static PlaybackFragment newInstance() {
         return new PlaybackFragment();
@@ -90,110 +99,63 @@ public class PlaybackFragment extends DialogFragment{
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.playback_fragment, container);
+        View view = inflater.inflate(R.layout.playback_fragment, container, false);
+
+        if(showDialog)
+            getDialog().getWindow().requestFeature(Window.FEATURE_NO_TITLE);
 
 
 
-        playbackArtist = (TextView) view.findViewById(R.id.playback_artist_name);
-        playbackAlbum = (TextView) view.findViewById(R.id.playback_album_name);
-        playbackTrack = (TextView) view.findViewById(R.id.playback_track_name);
-        playbackImage = (ImageView) view.findViewById(R.id.playback_image);
-        seekBar = (SeekBar) view.findViewById(R.id.playback_seekbar);
-        playbackLast = (ImageButton) view.findViewById(R.id.playback_last);
-        playbackPause = (ImageButton) view.findViewById(R.id.playback_pause);
-        playbackNext = (ImageButton) view.findViewById(R.id.playback_next);
-        playbackPosition = (TextView) view.findViewById(R.id.playback_position);
-        playbackFinalTime = (TextView) view.findViewById(R.id.playback_finaltime);
-
-        seekBar.setMax(30);
-        playbackPosition.setText("00:00");
-
-        timeZone = TimeZone.getTimeZone("UTC");
-        dataFormat = new SimpleDateFormat("mm:ss");
-        dataFormat.setTimeZone(timeZone);
-        String time = dataFormat.format(new Date(29000));
-
-
-        playbackFinalTime.setText(time);
-
-
-        seekBar.setClickable(false);
-
-        return view;
-    }
-
-
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        Intent intent = getActivity().getIntent();
-
-        spotifyIDsForTracks = intent.getStringArrayListExtra("spotifyIDsForTracks");
-
-        position = intent.getIntExtra("position", 0);
-
-        api = new SpotifyApi();
-
-        spotify = api.getService();
-
-
+        Log.e("error", "Track: " + currentTrack);
 
         Intent intentPlay = new Intent(getActivity(), PlaybackService.class);
         getActivity().startService(intentPlay);
         getActivity().bindService(intentPlay, mConnection, Context.BIND_AUTO_CREATE);
 
 
-
-        playTrack(position, ACTION_FIRSTTIME);
-
-
-        IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(ACTION_PLAYBACK_START);
-        intentFilter.addAction(ACTION_PLAYBACK_END);
+        if(savedInstanceState!=null){
+            isSameTrack = savedInstanceState.getBoolean("isSameTrack");
+        }
 
 
-        LocalBroadcastManager.getInstance(getActivity()).registerReceiver(mMessageReceiver,
-                intentFilter);
+            playbackArtist = (TextView) view.findViewById(R.id.playback_artist_name);
+            playbackAlbum = (TextView) view.findViewById(R.id.playback_album_name);
+            playbackTrack = (TextView) view.findViewById(R.id.playback_track_name);
+            playbackImage = (ImageView) view.findViewById(R.id.playback_image);
+            seekBar = (SeekBar) view.findViewById(R.id.playback_seekbar);
+            playbackLast = (ImageButton) view.findViewById(R.id.playback_last);
+            playbackPause = (ImageButton) view.findViewById(R.id.playback_pause);
+            playbackNext = (ImageButton) view.findViewById(R.id.playback_next);
+            playbackPosition = (TextView) view.findViewById(R.id.playback_position);
+            playbackFinalTime = (TextView) view.findViewById(R.id.playback_finaltime);
 
 
 
         playbackNext.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 if (position == spotifyIDsForTracks.size() - 1) position = -1;
-                playTrack(++position, ACTION_NEXT);
-                Log.e("error", "position = " + position);
+                downloadAndPlayTrack(++position, ACTION_NEXT);
+                CurrentPlaybackHelper.currentPosition++;
+
             }
         });
 
         playbackLast.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                if(position == 0) position = spotifyIDsForTracks.size();
-                playTrack(--position, ACTION_PREVIOUS);
+                if (position == 0) position = spotifyIDsForTracks.size();
+                downloadAndPlayTrack(--position, ACTION_PREVIOUS);
+                CurrentPlaybackHelper.currentPosition--;
             }
         });
 
         playbackPause.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                if(mBound){
-                    if(!isPause){
+                if (mBound) {
+                    if (!isPause) {
                         mService.pausePlayback();
                         isPause = true;
 
-                    }else{
+                    } else {
                         mService.startOrResumePlayback();
                         isPause = false;
 
@@ -220,11 +182,70 @@ public class PlaybackFragment extends DialogFragment{
 
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if(mBound&&fromUser){
+                if (mBound && fromUser) {
                     mService.seekTo(seekBar.getProgress());
                 }
             }
         });
+
+
+
+
+
+        return view;
+    }
+
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setRetainInstance(true);
+
+        CurrentPlaybackHelper.playingNow = true;
+        CurrentPlaybackHelper.previousArtist = CurrentPlaybackHelper.currentArtist;
+
+        showDialog = getArguments().getBoolean("showDialog");
+
+        timeZone = TimeZone.getTimeZone("UTC");
+        dataFormat = new SimpleDateFormat("mm:ss");
+        dataFormat.setTimeZone(timeZone);
+
+
+
+        spotifyIDsForTracks = getArguments().getStringArrayList("spotifyIDsForTracks");
+
+        CurrentPlaybackHelper.spotifyIDsForTracks = spotifyIDsForTracks;
+
+        position = getArguments().getInt("position", 0);
+
+        CurrentPlaybackHelper.currentPosition = position;
+
+        isSameTrack = getArguments().getBoolean("isSameTrack");
+
+        api = new SpotifyApi();
+
+        spotify = api.getService();
+
+
+
+
+
+
+
+
+
+
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(ACTION_PLAYBACK_START);
+        intentFilter.addAction(ACTION_PLAYBACK_END);
+
+
+        LocalBroadcastManager.getInstance(getActivity()).registerReceiver(mMessageReceiver,
+                intentFilter);
+
+
+
+
 
 
 
@@ -236,21 +257,71 @@ public class PlaybackFragment extends DialogFragment{
     @Override
     public void onStop() {
         super.onStop();
-        // Unbind from the service
         if (mBound) {
             getActivity().unbindService(mConnection);
             mBound = false;
         }
+
+        durationHandler.removeCallbacks(updateSeekbarTime);
+
     }
 
     @Override
     public void onDestroy() {
         // Unregister since the activity is about to be closed.
         LocalBroadcastManager.getInstance(getActivity()).unregisterReceiver(mMessageReceiver);
+        // Unbind from the service
+
+
+
         super.onDestroy();
     }
 
-    private void playTrack(int position, final String action){
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putBoolean("isSameTrack", isSameTrack);
+
+    }
+
+
+
+    private void changeUI(final String action, Track track){
+        if (track.artists.size() > 0)
+            playbackArtist.setText(track.artists.get(0).name);
+        playbackAlbum.setText(track.album.name);
+        playbackTrack.setText(track.name);
+        if (track.album.images.size() > 0)
+            Picasso.with(getActivity()).load(track.album.images.get(0).url).into(playbackImage);
+
+        seekBar.setMax(30);
+
+
+
+        String time = dataFormat.format(new Date(29000));
+
+
+        playbackFinalTime.setText(time);
+
+
+        seekBar.setClickable(false);
+
+
+        if (action != null) {
+            //Music starts to play once this activity is created.
+            seekBar.setProgress(0);
+            playbackPosition.setText("00:00");
+            if (mBound) {
+                mService.controlPlayback(action, track.preview_url);
+
+            }
+        }
+    }
+
+
+
+    private void downloadAndPlayTrack(int position, final String action){
 
         spotify.getTrack(spotifyIDsForTracks.get(position), new Callback<Track>() {
             @Override
@@ -258,22 +329,8 @@ public class PlaybackFragment extends DialogFragment{
                 getActivity().runOnUiThread(new Runnable() {
                     public void run() {
 
-                        if (track.artists.size() > 0)
-                            playbackArtist.setText(track.artists.get(0).name);
-                        playbackAlbum.setText(track.album.name);
-                        playbackTrack.setText(track.name);
-                        if (track.album.images.size() > 0)
-                            Picasso.with(getActivity()).load(track.album.images.get(0).url).into(playbackImage);
-
-                        seekBar.setProgress(0);
-                        playbackPosition.setText("00:00");
-                        if (action != null) {
-                            //Music starts to play once this activity is created.
-                            if(mBound) {
-                                mService.controlPlayback(action, track.preview_url);
-                            }
-
-                        }
+                        currentTrack = track;
+                        changeUI(action, track);
 
 
                     }
@@ -284,7 +341,7 @@ public class PlaybackFragment extends DialogFragment{
 
             @Override
             public void failure(RetrofitError error) {
-                Toast.makeText(getActivity().getApplicationContext(), "The track is not found.",
+                Toast.makeText(getActivity().getApplicationContext(), "The top_track_view is not found.",
                         Toast.LENGTH_SHORT).show();
             }
         });
@@ -301,6 +358,22 @@ public class PlaybackFragment extends DialogFragment{
             PlaybackService.LocalBinder binder = (PlaybackService.LocalBinder) service;
             mService = binder.getService();
             mBound = true;
+
+
+
+            if (isSameTrack){
+                int currentPosition = mService.getCurrentPosition();
+                playbackPosition.setText(dataFormat.format(new Date(currentPosition * 1000)));
+                seekBar.setProgress(currentPosition);
+                if(currentTrack!=null) changeUI(null, currentTrack);
+                else downloadAndPlayTrack(position, null);
+                durationHandler.postDelayed(updateSeekbarTime, 1000);
+            }
+            else {
+                downloadAndPlayTrack(position, ACTION_FIRSTTIME);
+                isSameTrack = true;
+            }
+
         }
 
         @Override
@@ -334,10 +407,11 @@ public class PlaybackFragment extends DialogFragment{
         public void run() {
             if(mBound) {
                 timeElapsed = mService.getCurrentPosition();
-                seekBar.setProgress(timeElapsed / 1000);
-                playbackPosition.setText(dataFormat.format(new Date(timeElapsed)));
-//                Log.e("error", "time =" + dataFormat.format(new Date(timeElapsed)));
+                seekBar.setProgress(timeElapsed);
+                playbackPosition.setText(dataFormat.format(new Date(timeElapsed * 1000)));
+//                Log.e("error", "time =" + dataFormat.format(new Date(timeElapsed*1000)));
                 durationHandler.postDelayed(this, 1000);
+
             }
         }
     };

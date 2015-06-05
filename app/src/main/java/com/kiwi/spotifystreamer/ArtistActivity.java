@@ -1,6 +1,9 @@
 package com.kiwi.spotifystreamer;
 
 import android.app.Activity;
+
+import android.app.Fragment;
+import android.app.FragmentManager;
 import android.content.Intent;
 import android.media.MediaPlayer;
 import android.os.AsyncTask;
@@ -8,15 +11,19 @@ import android.os.Bundle;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.Window;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -30,83 +37,212 @@ import kaaes.spotify.webapi.android.models.ArtistsPager;
 import kaaes.spotify.webapi.android.models.Image;
 
 
-public class ArtistActivity extends AppCompatActivity {
+public class ArtistActivity extends AppCompatActivity implements ArtistFragment.Callbacks, TopTrackFragment.Callbacks{
 
     EditText editText;
-    ListView artistListView;
-
-    ArrayList<String> artistImageURLs = new ArrayList<>();
-    ArrayList<String> artistNs = new ArrayList<>();
-    ArrayList<String> spotifyIDs = new ArrayList<>();
-
-    ArtistArrayAdapter artistAdapter;
 
 
+    private final String ARTIST_FRAGMENT = "com.kiwi.artist_fragment";
+    private final String PLAPBACK_FRAGMENT_TAG = "PLAYBACK_FRAGMENT";
 
+    ArtistFragment artistFragment;
+
+    private Button nowplaying;
+
+    private boolean mTwoPane = false;
+
+    Toolbar toolbar;
+
+    private ArrayList<String> artistImageURLs ;
+    private ArrayList<String> artistNs;
+
+    private ArtistArrayAdapter artistAdapter;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.artist_activity);
 
+        if(findViewById(R.id.track_list_view_container) != null){
+            mTwoPane = true;
+        }
 
+        Log.e("error", "mTwoPane = " + mTwoPane);
 
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar_artist); // Attaching the layout to the toolbar object
+         toolbar = (Toolbar) findViewById(R.id.toolbar_artist); // Attaching the layout to the toolbar object
         setSupportActionBar(toolbar);
+
+
+        nowplaying = (Button) findViewById(R.id.nowplaying);
+
+
+            nowplaying.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (CurrentPlaybackHelper.playingNow) {
+
+                        if(mTwoPane){
+                            PlaybackFragment playbackFragment = PlaybackFragment.newInstance();
+
+                            // In case this activity was started with special instructions from an
+                            // Intent, pass the Intent's extras to the fragment as arguments
+
+                            Bundle bundle = new Bundle();
+
+                            bundle.putStringArrayList("spotifyIDsForTracks", CurrentPlaybackHelper.spotifyIDsForTracks);
+
+                            bundle.putInt("position", CurrentPlaybackHelper.currentPosition);
+
+
+                                bundle.putBoolean("isSameTrack", true);
+
+
+                            bundle.putBoolean("showDialog", true);
+
+                            playbackFragment.setArguments(bundle);
+
+
+
+                            playbackFragment.show(getFragmentManager(), PLAPBACK_FRAGMENT_TAG);
+                        }else {
+                            Intent appInfo = new Intent(ArtistActivity.this, PlaybackActivity.class);
+                            appInfo.putStringArrayListExtra("spotifyIDsForTracks", CurrentPlaybackHelper.spotifyIDsForTracks);
+
+                            appInfo.putExtra("position", CurrentPlaybackHelper.currentPosition);
+
+
+                            startActivity(appInfo);
+                        }
+                    } else {
+                        Toast.makeText(getApplicationContext(), "No songs are playing now.",
+                                Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
+
+
 
         editText = (EditText) findViewById(R.id.search);
 
-
-
-        artistListView = (ListView) findViewById(R.id.artist_list_view);
 
         editText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
                 boolean handled = false;
                 if (actionId == EditorInfo.IME_ACTION_SEND) {
-                    queryArtists(editText.getText().toString());
+                        replaceArtistFragment(editText.getText().toString());
+
                     handled = true;
                 }
                 return handled;
             }
         });
 
+        RetainedFragment retainFragment = RetainedFragment.findOrCreateRetainFragment(getFragmentManager());
 
-        if(savedInstanceState != null) {
-            artistNs = savedInstanceState.getStringArrayList("artistNs");
-            artistImageURLs = savedInstanceState.getStringArrayList("artistImageURLs");
-            spotifyIDs = savedInstanceState.getStringArrayList("spotifyIDs");
+        artistNs = retainFragment.artistNs;
+        artistImageURLs = retainFragment.artistImageURLs;
+
+        if(artistNs==null){
+
+            artistNs = new ArrayList<>();
+            artistImageURLs = new ArrayList<>();
+
+            retainFragment.artistNs = artistNs;
+            retainFragment.artistImageURLs = artistImageURLs;
         }
 
+        // create fragments
+
+            artistFragment = (ArtistFragment) getFragmentManager().findFragmentByTag(ARTIST_FRAGMENT);
+
+
         artistAdapter = new ArtistArrayAdapter(this, artistNs, artistImageURLs);
-        artistListView.setAdapter(artistAdapter);
 
 
-        artistListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapter, View view, int position, long arg) {
-                Intent appInfo = new Intent(ArtistActivity.this, TopTrackActivity.class);
-                appInfo.putExtra("spotifyIDForArtist", spotifyIDs.get(position));
-                appInfo.putExtra("artistName", artistNs.get(position));
-                startActivity(appInfo);
-            }
-        });
+        if(artistFragment!=null)
+            artistFragment.setListAdapter(artistAdapter);
+
+
+
+
+
+
+
+
+    }
+
+
+    @Override
+    protected void onStart() {
+
+        // TESTING: If device orientation has changed List<ImageBean> was saved
+        // with a RetainedFragment. Seed the adapter with the retained
+        // List.
+        artistAdapter.notifyDataSetChanged();
+        super.onStart();
+    }
+
+
+
+//    private void startArtistFragment(String artistName){
+//        // Create a new Fragment to be placed in the activity layout
+//        ArtistFragment artistNewFragment = new ArtistFragment();
+//
+//        // In case this activity was started with special instructions from an
+//        // Intent, pass the Intent's extras to the fragment as arguments
+//
+//        Bundle bundle = new Bundle();
+//
+//        bundle.putString("artistName", artistName);
+//
+//        artistNewFragment.setArguments(bundle);
+//
+//        // Add the fragment to the 'fragment_container' FrameLayout
+//        getFragmentManager().beginTransaction()
+//                .add(R.id.artist_list_view_container, artistNewFragment, ARTIST_FRAGMENT).commit();
+//    }
+
+    private void replaceArtistFragment(String artistName){
+        // Create a new Fragment to be placed in the activity layout
+        ArtistFragment artistNewFragment = new ArtistFragment();
+
+        // In case this activity was started with special instructions from an
+        // Intent, pass the Intent's extras to the fragment as arguments
+
+        Bundle bundle = new Bundle();
+
+        bundle.putString("artistName", artistName);
+
+        artistNewFragment.setArguments(bundle);
+
+        // Add the fragment to the 'fragment_container' FrameLayout
+        getFragmentManager().beginTransaction()
+                .replace(R.id.artist_list_view_container, artistNewFragment, ARTIST_FRAGMENT).commit();
+
 
     }
 
 
 
 
-
-
-
     @Override
     protected void onSaveInstanceState(Bundle outState) {
+
+        // Android automatically saves visible fragments here. (?)
+
         super.onSaveInstanceState(outState);
-        outState.putStringArrayList("artistNs", artistNs);
-        outState.putStringArrayList("artistImageURLs", artistImageURLs);
-        outState.putStringArrayList("spotifyIDs", spotifyIDs);
+
+
+
+        artistFragment = (ArtistFragment) getFragmentManager().findFragmentByTag(ARTIST_FRAGMENT);
+
+        if(artistFragment!=null) {
+            RetainedFragment retainFragment = RetainedFragment.findOrCreateRetainFragment(getFragmentManager());
+            retainFragment.artistNs = artistFragment.artistNs;
+            retainFragment.artistImageURLs = artistFragment.artistImageURLs;
+//            Log.e("error", "retain fragment: " + retainFragment.artistNs);
+        }
 
     }
 
@@ -135,69 +271,71 @@ public class ArtistActivity extends AppCompatActivity {
     }
 
 
-    private void queryArtists(String artistName){
-
-        InputMethodManager imm = (InputMethodManager) getSystemService(Activity.INPUT_METHOD_SERVICE);
-        imm.toggleSoftInput(InputMethodManager.HIDE_IMPLICIT_ONLY, 0);
+    @Override
+    public void onItemSelected(String spotifyIDForArtist, String artistName){
 
 
-        new QueryArtistsTask().execute(artistName);
+        if(mTwoPane){
+            Bundle bundle = new Bundle();
+
+            bundle.putString("spotifyIDForArtist", spotifyIDForArtist);
 
 
+            TopTrackFragment firstFragment = new TopTrackFragment();
+
+            firstFragment.setArguments(bundle);
+
+            // Add the fragment to the 'fragment_container' FrameLayout
+            getFragmentManager().beginTransaction()
+                    .replace(R.id.track_list_view_container, firstFragment).addToBackStack(null).commit();
+
+            toolbar.setSubtitle(artistName);
+        }else {
 
 
-    }
-
-
-
-    private class QueryArtistsTask extends AsyncTask<String, Integer, ArtistsPager> {
-        protected ArtistsPager doInBackground(String ... artistName) {
-            SpotifyApi api = new SpotifyApi();
-
-            SpotifyService spotify = api.getService();
-            return spotify.searchArtists(artistName[0]);
-        }
-
-
-
-        protected void onPostExecute(ArtistsPager results) {
-           artistImageURLs.clear();
-            artistNs.clear();
-            spotifyIDs.clear();
-
-            for(Artist artist:results.artists.items){
-                String spotifyID = artist.id;
-                Image image;
-                if(artist.images.size()>0){
-                    image = artist.images.get(artist.images.size()-1);
-                    String imageURL = image.url;
-                    artistImageURLs.add(imageURL);
-                }
-                else artistImageURLs.add(null);
-                String artistN = artist.name;
-
-
-                artistNs.add(artistN);
-                spotifyIDs.add(spotifyID);
-
-            }
-
-            if(artistNs.size()>0) {
-                runOnUiThread(new Runnable() {
-                    public void run() {
-
-
-                        artistAdapter.notifyDataSetChanged();
-
-                    }
-                });
-            }else{
-                Toast.makeText(getApplicationContext(), "No artists are found to match the name.",
-                        Toast.LENGTH_SHORT).show();
-            }
+            Intent appInfo = new Intent(ArtistActivity.this, TopTrackActivity.class);
+            appInfo.putExtra("spotifyIDForArtist", spotifyIDForArtist);
+            appInfo.putExtra("artistName", artistName);
+            startActivity(appInfo);
         }
     }
 
 
+    @Override
+    public void onItemSelectedTrack(ArrayList<String> spotifyIDsForTracks, int position){
+
+
+        // Create a new Fragment to be placed in the activity layout
+        PlaybackFragment playbackFragment = PlaybackFragment.newInstance();
+
+        // In case this activity was started with special instructions from an
+        // Intent, pass the Intent's extras to the fragment as arguments
+
+        Bundle bundle = new Bundle();
+
+        bundle.putStringArrayList("spotifyIDsForTracks", spotifyIDsForTracks);
+
+        bundle.putInt("position", position);
+
+        if (CurrentPlaybackHelper.currentPosition == position &&
+                (CurrentPlaybackHelper.previousArtist==null ||
+                        CurrentPlaybackHelper.previousArtist.equals(CurrentPlaybackHelper.currentArtist))){
+            bundle.putBoolean("isSameTrack", true);
+        } else {
+            bundle.putBoolean("isSameTrack", false);
+
+        }
+
+        bundle.putBoolean("showDialog", true);
+
+        playbackFragment.setArguments(bundle);
+
+
+
+        playbackFragment.show(getFragmentManager(), PLAPBACK_FRAGMENT_TAG);
+
+    }
 
 }
+
+

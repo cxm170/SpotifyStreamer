@@ -37,14 +37,7 @@
             android:name=".PlaybackService"
             android:enabled="true"
             android:exported="true" >
-            <intent-filter>
-                <action android:name="com.kiwi.action.PLAY" />
-                <action android:name="com.kiwi.action.PAUSE" />
-                <action android:name="com.kiwi.action.PREVIOUS" />
-                <action android:name="com.kiwi.action.NEXT" />
-                <action android:name="com.kiwi.action.FIRSTTIME" />
 
-            </intent-filter>
         </service>
     </application>
 
